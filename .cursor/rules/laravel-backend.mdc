@@ -1,0 +1,39 @@
+---
+globs: *.php,app/**/*.php,routes/**/*.php,database/**/*.php,config/**/*.php
+---
+
+# Laravel Backend Development Rules
+
+## Code Style and Standards
+
+- Follow Laravel conventions and PSR-12 coding standards
+- Use Laravel Pint for PHP code formatting (configured in composer.json)
+- Use Pest for testing instead of PHPUnit
+- Follow Laravel's naming conventions:
+  - Controllers: `PascalCase` (e.g., `UserController`)
+  - Models: `PascalCase` (e.g., `User`)
+  - Routes: `kebab-case` (e.g., `/user-profile`)
+  - Database tables: `snake_case` (e.g., `user_profiles`)
+
+## Architecture Patterns
+
+- Use Eloquent models for database interactions
+- Follow Laravel's MVC pattern strictly
+- Use Laravel Fortify for authentication (already configured)
+- Use Inertia.js for SPA-like experience without API endpoints
+- Use Laravel Wayfinder for route generation in frontend
+
+## Key Files
+
+- [app/Models/User.php](mdc:app/Models/User.php) - User model with authentication
+- [routes/web.php](mdc:routes/web.php) - Web routes
+- [config/database.php](mdc:config/database.php) - Database configuration
+- [bootstrap/app.php](mdc:bootstrap/app.php) - Application bootstrap
+
+## Development Guidelines
+
+- Use Laravel's built-in validation rules
+- Use Eloquent relationships for data associations
+- Use Laravel's service container for dependency injection
+- Use Laravel's queue system for background jobs
+- Use Laravel Pail for log monitoring during development

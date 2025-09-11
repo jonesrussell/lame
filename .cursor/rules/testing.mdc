@@ -1,0 +1,50 @@
+---
+globs: tests/**/*.php,*.test.ts,*.test.js,*.spec.ts,*.spec.js
+---
+
+# Testing Guidelines
+
+## Backend Testing (PHP)
+
+- Use Pest PHP for all backend tests (configured in [composer.json](mdc:composer.json))
+- Tests are located in `tests/` directory
+- Use Laravel's testing features:
+  - `RefreshDatabase` trait for database tests
+  - `DatabaseTransactions` for transaction tests
+  - `WithoutMiddleware` for bypassing middleware
+  - `ActingAs()` for authentication testing
+
+## Test Structure
+
+- Feature tests: Test complete user workflows
+- Unit tests: Test individual classes and methods
+- Use Laravel's built-in assertions and Pest's expect syntax
+
+## Example Test Structure
+
+```php
+<?php
+
+use App\Models\User;
+
+it('can create a user', function () {
+    $user = User::factory()->create();
+    
+    expect($user)->toBeInstanceOf(User::class);
+    expect($user->name)->not->toBeEmpty();
+});
+```
+
+## Frontend Testing
+
+- Use Vitest for frontend testing (if configured)
+- Test Vue components using Vue Test Utils
+- Test composables and utilities separately
+- Use TypeScript for test files
+
+## CI/CD
+
+- Tests run automatically on GitHub Actions (see [.github/workflows/tests.yml](mdc:.github/workflows/tests.yml))
+- PHP 8.4 and Node.js 22 are used in CI
+- Tests run on push to `main` and `develop` branches
+- Pull requests to `main` and `develop` trigger tests

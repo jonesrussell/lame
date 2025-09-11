@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+---
+
+# Laravel + Vue + TypeScript Project Structure
+
+This is a Laravel 12 application with Vue 3 frontend using TypeScript, Inertia.js, and Tailwind 4 CSS.
+
+## Key Files and Structure
+
+- **Backend Entry**: [public/index.php](mdc:public/index.php) - Laravel application entry point
+- **Frontend Entry**: [resources/js/app.ts](mdc:resources/js/app.ts) - Vue 3 + Inertia.js application setup
+- **Build Config**: [vite.config.ts](mdc:vite.config.ts) - Vite configuration with Laravel, Vue, and Tailwind plugins
+- **TypeScript Config**: [tsconfig.json](mdc:tsconfig.json) - TypeScript configuration with Vue support
+- **ESLint Config**: [eslint.config.js](mdc:eslint.config.js) - ESLint configuration for Vue + TypeScript
+- **Package Config**: [package.json](mdc:package.json) - Frontend dependencies and scripts
+- **Composer Config**: [composer.json](mdc:composer.json) - PHP dependencies and Laravel configuration
+
+## Directory Structure
+
+- `app/` - Laravel backend (Models, Controllers, etc.)
+- `resources/js/` - Vue 3 frontend code
+  - `pages/` - Inertia.js page components
+  - `components/` - Reusable Vue components
+  - `layouts/` - Layout components
+  - `composables/` - Vue 3 composables
+  - `types/` - TypeScript type definitions
+- `routes/` - Laravel routes
+- `database/` - Migrations, seeders, factories
+- `tests/` - Pest PHP tests
+
+## Development Workflow
+
+- Use `composer run dev` for full development environment (Laravel server + Vite + queue + logs)
+- Frontend hot reloading is enabled via Vite
+- TypeScript compilation happens automatically
+- ESLint and Prettier are configured for code formatting

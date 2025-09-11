@@ -1,0 +1,61 @@
+---
+description: Inertia.js patterns and best practices
+---
+
+# Inertia.js Development Patterns
+
+## Page Components
+
+- Page components go in `resources/js/pages/` directory
+- Use Vue 3 Composition API with `<script setup>`
+- Define props using TypeScript interfaces
+- Use Inertia's `usePage()` composable for accessing shared data
+
+## Data Flow
+
+- Laravel controllers pass data to Inertia pages via `Inertia::render()`
+- Use Inertia's `useForm()` composable for form handling
+- Use Inertia's `router.visit()` for navigation
+- Use Inertia's `router.get()`, `router.post()`, etc. for HTTP requests
+
+## Shared Data
+
+- Use Inertia's `HandleInertiaRequests` middleware for global data
+- Pass user data, flash messages, and other shared data through Inertia
+- Use TypeScript interfaces for page props
+
+## Form Handling
+
+```typescript
+import { useForm } from '@inertiajs/vue3'
+
+const form = useForm({
+  name: '',
+  email: '',
+})
+
+const submit = () => {
+  form.post('/users')
+}
+```
+
+## Navigation
+
+```typescript
+import { router } from '@inertiajs/vue3'
+
+// Visit a page
+router.visit('/users')
+
+// Visit with data
+router.visit('/users', {
+  data: { search: 'john' },
+  method: 'get'
+})
+```
+
+## Layouts
+
+- Use layout components in `resources/js/layouts/`
+- Define layouts in page components using `defineOptions({ layout: LayoutName })`
+- Use `AppShell` component for consistent app structure
