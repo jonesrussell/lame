@@ -25,8 +25,8 @@ class NoteFactory extends Factory
     public function definition(): array
     {
         return [
-            'content' => $this->faker->sentence(),
-            'done' => $this->faker->boolean(30), // 30% chance of being done
+            'content' => fake()->words(5, true),
+            'done' => fake()->boolean(30), // 30% chance of being done
         ];
     }
 
@@ -56,7 +56,7 @@ class NoteFactory extends Factory
     public function longContent(): static
     {
         return $this->state(fn (array $attributes) => [
-            'content' => $this->faker->paragraph(5),
+            'content' => fake()->words(20, true),
         ]);
     }
 }
