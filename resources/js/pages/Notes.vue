@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { notes } from '@/routes';
+import { notes as notesRoute } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { CheckCircle, Clock, FileText, Plus, Trash2, X } from 'lucide-vue-next';
@@ -28,7 +28,7 @@ const isSubmitting = ref(false);
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Notes',
-        href: notes().url,
+        href: notesRoute().url,
     },
 ];
 
@@ -63,7 +63,7 @@ const deleteNote = async (noteId: string) => {
     }
 };
 
-const toggleNoteStatus = async (noteId: string, currentStatus: boolean) => {
+const toggleNoteStatus = async (noteId: string) => {
     try {
         await fetch(`/api/notes/${noteId}/toggle`, {
             method: 'PATCH',
@@ -264,7 +264,7 @@ const cancelAddNote = () => {
                         <!-- Actions -->
                         <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                             <button
-                                @click="toggleNoteStatus(note.id, note.done)"
+                                @click="toggleNoteStatus(note.id)"
                                 :class="[
                                     'rounded-md px-2 py-1 text-xs font-medium transition-colors',
                                     note.done 
