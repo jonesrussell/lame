@@ -2,8 +2,9 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { notes } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { CheckCircle, Clock, FileText, Plus, Trash2 } from 'lucide-vue-next';
+import { ref } from 'vue';
 
 interface Note {
     id: string;
@@ -34,6 +35,46 @@ const formatDate = (dateString: string) => {
         hour: '2-digit',
         minute: '2-digit',
     });
+};
+
+const deleteNote = async (noteId: string) => {
+    if (confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
+        try {
+            await fetch(`/api/notes/${noteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+            
+            // Refresh the page to show updated notes list
+            router.reload();
+        } catch (error) {
+            console.error('Error deleting note:', error);
+            alert('Failed to delete note. Please try again.');
+        }
+    }
+};
+
+const toggleNoteStatus = async (noteId: string, currentStatus: boolean) => {
+    try {
+        await fetch(`/api/notes/${noteId}/toggle`, {
+            method: 'PATCH',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+        });
+        
+        // Refresh the page to show updated notes list
+        router.reload();
+    } catch (error) {
+        console.error('Error toggling note status:', error);
+        alert('Failed to update note status. Please try again.');
+    }
 };
 </script>
 
@@ -111,6 +152,7 @@ const formatDate = (dateString: string) => {
                         <!-- Actions -->
                         <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                             <button
+                                @click="toggleNoteStatus(note.id, note.done)"
                                 :class="[
                                     'rounded-md px-2 py-1 text-xs font-medium transition-colors',
                                     note.done 
@@ -120,7 +162,10 @@ const formatDate = (dateString: string) => {
                             >
                                 {{ note.done ? 'Mark Undone' : 'Mark Done' }}
                             </button>
-                            <button class="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900">
+                            <button 
+                                @click="deleteNote(note.id)"
+                                class="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900"
+                            >
                                 <Trash2 class="h-3 w-3" />
                             </button>
                         </div>
