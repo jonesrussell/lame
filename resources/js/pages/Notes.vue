@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { notes } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
-import { CheckCircle, Clock, FileText, Plus, Trash2 } from 'lucide-vue-next';
+import { CheckCircle, Clock, FileText, Plus, Trash2, X } from 'lucide-vue-next';
 import { ref } from 'vue';
 
 interface Note {
@@ -19,6 +19,11 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+// Form state
+const showAddForm = ref(false);
+const newNoteContent = ref('');
+const isSubmitting = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -76,6 +81,54 @@ const toggleNoteStatus = async (noteId: string, currentStatus: boolean) => {
         alert('Failed to update note status. Please try again.');
     }
 };
+
+const addNote = async () => {
+    if (!newNoteContent.value.trim()) {
+        alert('Please enter note content.');
+        return;
+    }
+
+    if (newNoteContent.value.length > 1000) {
+        alert('Note content cannot exceed 1000 characters.');
+        return;
+    }
+
+    isSubmitting.value = true;
+
+    try {
+        const response = await fetch('/api/notes', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+            body: JSON.stringify({
+                content: newNoteContent.value.trim(),
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to create note');
+        }
+
+        // Reset form and refresh page
+        newNoteContent.value = '';
+        showAddForm.value = false;
+        router.reload();
+    } catch (error) {
+        console.error('Error creating note:', error);
+        alert(error instanceof Error ? error.message : 'Failed to create note. Please try again.');
+    } finally {
+        isSubmitting.value = false;
+    }
+};
+
+const cancelAddNote = () => {
+    newNoteContent.value = '';
+    showAddForm.value = false;
+};
 </script>
 
 <template>
@@ -89,10 +142,66 @@ const toggleNoteStatus = async (noteId: string, currentStatus: boolean) => {
                     <h1 class="text-2xl font-bold">Notes</h1>
                     <p class="text-muted-foreground">Manage your todo notes</p>
                 </div>
-                <button class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                <button 
+                    v-if="!showAddForm"
+                    @click="showAddForm = true"
+                    class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
                     <Plus class="h-4 w-4" />
                     Add Note
                 </button>
+            </div>
+
+            <!-- Add Note Form -->
+            <div v-if="showAddForm" class="rounded-lg border bg-card p-4">
+                <div class="mb-4 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Add New Note</h3>
+                    <button 
+                        @click="cancelAddNote"
+                        class="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                    >
+                        <X class="h-4 w-4" />
+                    </button>
+                </div>
+                
+                <form @submit.prevent="addNote" class="space-y-4">
+                    <div>
+                        <label for="note-content" class="block text-sm font-medium text-foreground mb-2">
+                            Note Content
+                        </label>
+                        <textarea
+                            id="note-content"
+                            v-model="newNoteContent"
+                            rows="3"
+                            maxlength="1000"
+                            placeholder="Enter your note content..."
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            :disabled="isSubmitting"
+                        />
+                        <div class="mt-1 text-xs text-muted-foreground">
+                            {{ newNoteContent.length }}/1000 characters
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="submit"
+                            :disabled="isSubmitting || !newNoteContent.trim()"
+                            class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Plus class="h-4 w-4" />
+                            {{ isSubmitting ? 'Creating...' : 'Create Note' }}
+                        </button>
+                        <button
+                            type="button"
+                            @click="cancelAddNote"
+                            :disabled="isSubmitting"
+                            class="inline-flex items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </form>
             </div>
 
             <!-- Notes List -->
@@ -103,7 +212,10 @@ const toggleNoteStatus = async (noteId: string, currentStatus: boolean) => {
                     <p class="mt-2 text-sm text-muted-foreground">
                         Get started by creating your first note.
                     </p>
-                    <button class="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                    <button 
+                        @click="showAddForm = true"
+                        class="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                    >
                         <Plus class="h-4 w-4" />
                         Create Note
                     </button>
