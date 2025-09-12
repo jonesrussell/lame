@@ -39,7 +39,7 @@ class Note extends Model
     public $incrementing = false;
 
     /**
-     * The data type of the auto-incrementing ID.
+     * The data type of the ID.
      */
     protected $keyType = 'string';
 
