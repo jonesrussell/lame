@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Events\NoteCreated;
+use App\Events\NoteDeleted;
+use App\Events\NoteUpdated;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -127,6 +130,18 @@ class Note extends Model
 
         static::updating(function ($note) {
             $note->validate();
+        });
+
+        static::created(function ($note) {
+            event(new NoteCreated($note));
+        });
+
+        static::updated(function ($note) {
+            event(new NoteUpdated($note));
+        });
+
+        static::deleted(function ($note) {
+            event(new NoteDeleted($note->id));
         });
     }
 }
