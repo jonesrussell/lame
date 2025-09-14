@@ -23,6 +23,17 @@ class NoteUpdated implements ShouldBroadcast
     public function __construct(Note $note)
     {
         $this->note = $note;
+        
+        // Debug logging
+        \Log::info('NoteUpdated event fired', [
+            'note_id' => $note->id,
+            'note_content' => $note->content,
+            'note_done' => $note->done,
+            'broadcast_channel' => 'notes',
+            'broadcast_event' => 'note.updated'
+        ]);
+
+        $this->broadcastVia('reverb');
     }
 
     /**

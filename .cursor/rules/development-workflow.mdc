@@ -2,72 +2,55 @@
 description: Development workflow and environment setup
 ---
 
-# Development Workflow
-
-## Environment Setup
-
-- PHP 8.2+ required (CI uses 8.4)
-- Node.js 22 required
-- Use SQLite for local development (configured in composer.json)
-- Copy `.env.example` to `.env` for environment variables
+# Development Workflow and Environment
 
 ## Development Commands
 
-### Full Development Environment
-```bash
-composer run dev
-```
-This runs:
-- Laravel development server (`php artisan serve`)
-- Queue worker (`php artisan queue:listen`)
-- Log monitoring (`php artisan pail`)
-- Vite dev server with hot reloading (`npm run dev`)
+- **Full Development**: `composer run dev` - Starts Laravel server, Vite, queue worker, and logs
+- **Frontend Only**: `npm run dev` - Vite development server with hot reloading
+- **Backend Only**: `php artisan serve` - Laravel development server
+- **Queue Worker**: `php artisan queue:work` - Process background jobs
+- **Logs**: `php artisan pail` - Real-time log monitoring
 
-### Individual Services
-```bash
-# Laravel server only
-php artisan serve
+## Environment Setup
 
-# Vite dev server only
-npm run dev
+- **DDEV Support**: Configured for DDEV with proper CORS and HMR settings
+- **Hot Reloading**: Vite provides instant updates for frontend changes
+- **Database**: SQLite for development, easily configurable for other databases
+- **Redis**: Configured for sessions, cache, and queue (via Predis)
 
-# Queue worker only
-php artisan queue:listen
+## Code Quality
 
-# Log monitoring only
-php artisan pail
-```
+- **ESLint**: Configured in [eslint.config.js](mdc:eslint.config.js) for Vue + TypeScript
+- **Prettier**: Code formatting with import organization
+- **Laravel Pint**: PHP code formatting
+- **TypeScript**: Strict type checking enabled
 
-### Code Quality
-```bash
-# Format PHP code
-./vendor/bin/pint
+## Build Process
 
-# Format frontend code
-npm run format
+- **Vite**: Modern build tool with fast HMR and optimized production builds
+- **Tailwind CSS**: Utility-first CSS framework with JIT compilation
+- **TypeScript**: Compilation and type checking
+- **Asset Optimization**: Automatic optimization for production
 
-# Lint frontend code
-npm run lint
+## Testing
 
-# Run tests
-composer run test
-```
+- **Pest PHP**: Modern PHP testing framework
+- **Vue Testing**: Use Vue Test Utils for component testing
+- **Feature Tests**: Test complete user workflows
+- **Unit Tests**: Test individual functions and classes
 
-## Hot Reloading
+## Deployment Considerations
 
-- Frontend changes are automatically reloaded via Vite
-- Backend changes require manual refresh
-- Use `composer run dev` for the best development experience
+- **Environment Variables**: Use `.env` files for configuration
+- **Asset Compilation**: Run `npm run build` for production assets
+- **Database Migrations**: Run migrations on deployment
+- **Queue Workers**: Ensure queue workers are running in production
+- **Cache**: Clear and warm cache after deployment
 
-## Database
+## Development Tools
 
-- SQLite database is automatically created (`database/database.sqlite`)
-- Run migrations: `php artisan migrate`
-- Use factories for test data: `User::factory()->create()`
-
-## Git Workflow
-
-- Use `main` branch for production
-- Use `develop` branch for development
-- Create feature branches from `develop`
-- Tests run automatically on push/PR to `main` and `develop`
+- **Laravel Telescope**: Debugging and monitoring (disabled by default)
+- **Laravel Pulse**: Application performance monitoring
+- **Laravel Reverb**: WebSocket server for real-time features
+- **Laravel Wayfinder**: Enhanced routing capabilities

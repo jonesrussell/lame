@@ -1,32 +1,77 @@
 ---
-description: Inertia.js patterns and best practices
+description: Inertia.js patterns and best practices for Laravel + Vue integration
 ---
 
-# Inertia.js Development Patterns
+# Inertia.js Patterns and Best Practices
 
 ## Page Components
 
-- Page components go in `resources/js/pages/` directory
-- Use Vue 3 Composition API with `<script setup>`
-- Define props using TypeScript interfaces
-- Use Inertia's `usePage()` composable for accessing shared data
+- **Location**: [resources/js/pages](mdc:resources/js/pages) - All Inertia page components
+- **Naming**: Use PascalCase for page component files (e.g., `UserProfile.vue`)
+- **Props**: Define TypeScript interfaces for page props
+- **Layouts**: Use persistent layouts for shared page structure
 
-## Data Flow
+## Data Passing
 
-- Laravel controllers pass data to Inertia pages via `Inertia::render()`
-- Use Inertia's `useForm()` composable for form handling
-- Use Inertia's `router.visit()` for navigation
-- Use Inertia's `router.get()`, `router.post()`, etc. for HTTP requests
+- **Server to Client**: Pass data through Inertia props in Laravel controllers
+- **Client to Server**: Use Inertia forms for POST/PUT/PATCH/DELETE requests
+- **Shared Data**: Use Inertia middleware for global data (user, flash messages)
+- **Transformers**: Use API resources or manual transformation for data shaping
 
-## Shared Data
+## Navigation
 
-- Use Inertia's `HandleInertiaRequests` middleware for global data
-- Pass user data, flash messages, and other shared data through Inertia
-- Use TypeScript interfaces for page props
+- **Router**: Use Inertia's `router` composable for programmatic navigation
+- **Links**: Use `<Link>` component for SPA-style navigation
+- **Back/Forward**: Use browser history with `router.visit()`
+- **External Links**: Use regular `<a>` tags for external URLs
 
-## Form Handling
+## Forms
+
+- **Form Handling**: Use Inertia's `useForm` composable
+- **Validation**: Handle Laravel validation errors in frontend
+- **File Uploads**: Use `FormData` for file uploads with Inertia
+- **Progress**: Show upload progress for file submissions
+
+## Error Handling
+
+- **Validation Errors**: Display field-specific validation messages
+- **Flash Messages**: Show success/error messages from Laravel
+- **Network Errors**: Handle connection issues gracefully
+- **404/500**: Create custom error pages
+
+## Performance
+
+- **Partial Reloads**: Use `only` prop to reload specific props
+- **Caching**: Implement appropriate caching strategies
+- **Code Splitting**: Use dynamic imports for page components
+- **Preloading**: Preload pages on hover/focus
+
+## SSR Support
+
+- **Server-Side Rendering**: Configure SSR in [vite.config.ts](mdc:vite.config.ts)
+- **Hydration**: Ensure proper hydration of server-rendered content
+- **SEO**: Use SSR for better search engine optimization
+- **Performance**: SSR improves initial page load times
+
+## Example Patterns
 
 ```typescript
+// Page component with props
+<script setup lang="ts">
+import { Head } from '@inertiajs/vue3'
+
+interface Props {
+  user: {
+    id: number
+    name: string
+    email: string
+  }
+}
+
+defineProps<Props>()
+</script>
+
+// Form handling
 import { useForm } from '@inertiajs/vue3'
 
 const form = useForm({
@@ -38,24 +83,3 @@ const submit = () => {
   form.post('/users')
 }
 ```
-
-## Navigation
-
-```typescript
-import { router } from '@inertiajs/vue3'
-
-// Visit a page
-router.visit('/users')
-
-// Visit with data
-router.visit('/users', {
-  data: { search: 'john' },
-  method: 'get'
-})
-```
-
-## Layouts
-
-- Use layout components in `resources/js/layouts/`
-- Define layouts in page components using `defineOptions({ layout: LayoutName })`
-- Use `AppShell` component for consistent app structure

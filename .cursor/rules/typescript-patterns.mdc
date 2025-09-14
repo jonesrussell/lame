@@ -1,0 +1,75 @@
+---
+globs: resources/js/**/*.ts,resources/js/**/*.tsx
+description: TypeScript patterns and type safety best practices
+---
+
+# TypeScript Patterns and Type Safety
+
+## Type Definitions
+
+- **Global Types**: Define in [resources/js/types](mdc:resources/js/types) directory
+- **Component Props**: Always define interfaces for Vue component props
+- **API Responses**: Create interfaces for API response structures
+- **Form Data**: Define types for form inputs and validation
+
+## Vue + TypeScript Integration
+
+- **Script Setup**: Use `<script setup lang="ts">` for all components
+- **Props**: Use `defineProps<Interface>()` with TypeScript interfaces
+- **Emits**: Use `defineEmits<{ event: [payload: Type] }>()` for type-safe emits
+- **Refs**: Use `ref<Type>()` with explicit types for reactive references
+
+## Type Safety Best Practices
+
+- **Strict Mode**: Enabled in [tsconfig.json](mdc:tsconfig.json) for maximum type safety
+- **No Any**: Avoid `any` type, use `unknown` or proper types instead
+- **Null Checks**: Use optional chaining and nullish coalescing
+- **Type Guards**: Use type guards for runtime type checking
+
+## Common Patterns
+
+```typescript
+// Component props with interface
+interface Props {
+  user: User
+  isLoading: boolean
+}
+
+defineProps<Props>()
+
+// Reactive state with types
+const count = ref<number>(0)
+const users = ref<User[]>([])
+
+// Computed with return types
+const filteredUsers = computed((): User[] => {
+  return users.value.filter(user => user.active)
+})
+
+// Event handlers with proper typing
+const handleSubmit = (event: Event) => {
+  // Handle form submission
+}
+
+// API response typing
+interface ApiResponse<T> {
+  data: T
+  message: string
+  status: number
+}
+```
+
+## Utility Types
+
+- **Partial**: Make all properties optional
+- **Pick**: Select specific properties
+- **Omit**: Exclude specific properties
+- **Record**: Create object types with specific keys
+- **Union Types**: Use `|` for multiple possible types
+
+## Error Handling
+
+- **Try-Catch**: Use proper error typing in catch blocks
+- **Custom Errors**: Create typed error classes
+- **Validation**: Use type guards for runtime validation
+- **API Errors**: Handle typed API error responses

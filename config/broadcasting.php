@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'default' => env('BROADCAST_CONNECTION', 'null'),
+    'default' => env('BROADCAST_CONNECTION', 'reverb'),
 
     /*
     |--------------------------------------------------------------------------
@@ -43,6 +43,11 @@ return [
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                'verify' => false, // Disable SSL verification for local development
+                // 'curl' => [
+                //     CURLOPT_SSL_VERIFYPEER => false,
+                //     CURLOPT_SSL_VERIFYHOST => false,
+                // ],
             ],
         ],
 

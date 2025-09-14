@@ -1,264 +1,180 @@
-import { ref, onMounted, onUnmounted } from 'vue';
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
+import { ref, readonly, onMounted, onUnmounted } from 'vue';
+import { echoService } from '@/services/EchoService';
+import { apiService } from '@/services/ApiService';
+import type { Note, NoteEvent, NoteDeletedEvent } from '@/types/Note';
 
-// Make Pusher globally available
-window.Pusher = Pusher;
-
-// Extend window interface for Echo and Pusher
-declare global {
-    interface Window {
-        Echo: Echo<any>;
-        Pusher: typeof Pusher;
-    }
-}
-
-interface Note {
-    id: string;
-    content: string;
-    done: boolean;
-    created_at: string;
-    updated_at: string;
-}
-
-interface NoteEvent {
-    note: Note;
-    action: 'created' | 'updated';
-}
-
-interface NoteDeletedEvent {
-    noteId: string;
-    action: 'deleted';
-}
-
+/**
+ * Notes management composable with real-time WebSocket updates
+ * Focuses solely on notes CRUD operations and WebSocket event handling
+ */
 export function useNotesRealtime() {
     const notes = ref<Note[]>([]);
     const isLoading = ref(false);
     const error = ref<string | null>(null);
+    
+    let notesChannel: any = null;
 
-    // Initialize Echo
-    const initializeEcho = () => {
-        if (!window.Echo) {
-            console.log('Initializing Echo with Reverb...', {
-                key: import.meta.env.VITE_REVERB_APP_KEY,
-                wsHost: import.meta.env.VITE_REVERB_HOST,
-                wsPort: import.meta.env.VITE_REVERB_PORT,
-                scheme: import.meta.env.VITE_REVERB_SCHEME,
-            });
-            
-            window.Echo = new Echo({
-                broadcaster: 'pusher',
-                key: import.meta.env.VITE_REVERB_APP_KEY,
-                cluster: 'mt1',
-                wsHost: import.meta.env.VITE_REVERB_HOST,
-                wsPort: import.meta.env.VITE_REVERB_PORT,
-                wssPort: import.meta.env.VITE_REVERB_PORT,
-                forceTLS: false,
-                enabledTransports: ['wss'],
-                disableStats: true,
-            });
-            
-            console.log('✅ Echo instance created successfully');
-            
-            // Add connection debugging
-            window.Echo.connector.pusher.connection.bind('connecting', () => {
-                console.log('🔄 Connecting to WebSocket...');
-            });
-            
-            window.Echo.connector.pusher.connection.bind('connected', () => {
-                console.log('🔗 WebSocket connected successfully');
-            });
-            
-            window.Echo.connector.pusher.connection.bind('disconnected', () => {
-                console.log('❌ WebSocket disconnected');
-            });
-            
-            window.Echo.connector.pusher.connection.bind('error', (error: any) => {
-                console.error('🚨 WebSocket error:', error);
-            });
-        }
-        return window.Echo;
-    };
-
-    // Listen for note events
-    const listenForNotes = () => {
-        const echo = initializeEcho();
+    // Event handlers
+    const handleNoteCreated = (event: NoteEvent) => {
+        console.log('🎉 Note created:', { 
+            event, 
+            action: event.action,
+            timestamp: event.timestamp,
+            noteId: event.note?.id 
+        });
         
-        echo.channel('notes')
-            .listen('note.created', (event: NoteEvent) => {
-                console.log('🎉 Note created:', event.note);
-                notes.value.unshift(event.note);
-            })
-            .listen('note.updated', (event: NoteEvent) => {
-                console.log('📝 Note updated:', event.note);
-                const index = notes.value.findIndex(note => note.id === event.note.id);
-                if (index !== -1) {
-                    notes.value[index] = event.note;
-                }
-            })
-            .listen('note.deleted', (event: NoteDeletedEvent) => {
-                console.log('🗑️ Note deleted:', event.noteId);
-                const index = notes.value.findIndex(note => note.id === event.noteId);
-                if (index !== -1) {
-                    notes.value.splice(index, 1);
-                }
-            })
-            .error((error: any) => {
-                console.error('Echo error:', error);
-            });
+        // Validate event data
+        if (!event.note || !event.note.id) {
+            console.warn('⚠️ Invalid note data received:', event);
+            return;
+        }
+        
+        // Prevent duplicates
+        const exists = notes.value.some(note => note.id === event.note.id);
+        if (!exists) {
+            notes.value.unshift(event.note);
+            console.log('✅ Note added, total count:', notes.value.length);
+        } else {
+            console.log('ℹ️ Note already exists, skipping duplicate');
+        }
     };
 
-    // Fetch initial notes
-    const fetchNotes = async () => {
+    const handleNoteUpdated = (event: NoteEvent) => {
+        console.log('📝 Note updated:', event);
+        
+        const index = notes.value.findIndex(note => note.id === event.note.id);
+        if (index !== -1) {
+            notes.value[index] = event.note;
+        }
+    };
+
+    const handleNoteDeleted = (event: NoteDeletedEvent) => {
+        console.log('🗑️ Note deleted:', event);
+        
+        const index = notes.value.findIndex(note => note.id === event.noteId);
+        if (index !== -1) {
+            notes.value.splice(index, 1);
+        }
+    };
+
+    // Setup WebSocket event listeners
+    const setupEventListeners = () => {
+        const echo = echoService.initialize();
+        notesChannel = echo.channel('notes');
+
+        // Listen for events - try both naming conventions for backwards compatibility
+        notesChannel
+            .listen('NoteCreated', handleNoteCreated)
+            .listen('.note.created', handleNoteCreated)
+            .listen('NoteUpdated', handleNoteUpdated) 
+            .listen('.note.updated', handleNoteUpdated)
+            .listen('NoteDeleted', handleNoteDeleted)
+            .listen('.note.deleted', handleNoteDeleted);
+
+        // Channel status handlers
+        notesChannel.subscribed(() => console.log('✅ Subscribed to notes channel'));
+        notesChannel.error((error: any) => console.error('🚨 Channel error:', error));
+
+        return notesChannel;
+    };
+
+    // API operations
+    const fetchNotes = async (): Promise<void> => {
         isLoading.value = true;
         error.value = null;
-        
+
         try {
-            const response = await fetch('/api/notes', {
-                headers: {
-                    'Accept': 'application/json',
-                },
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to fetch notes');
-            }
-            
-            const data = await response.json();
-            notes.value = data.data;
+            const data = await apiService.get<{ data: Note[] } | Note[]>('/api/notes');
+            notes.value = Array.isArray(data) ? data : data.data || [];
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'An error occurred';
+            error.value = err instanceof Error ? err.message : 'Failed to fetch notes';
             console.error('Error fetching notes:', err);
         } finally {
             isLoading.value = false;
         }
     };
 
-    // Create a new note
-    const createNote = async (content: string) => {
+    const createNote = async (content: string): Promise<Note> => {
         try {
-            const response = await fetch('/api/notes', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                body: JSON.stringify({ content }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create note');
-            }
-
-            // Note will be added automatically via real-time event
-            return await response.json();
+            const result = await apiService.post<Note>('/api/notes', { content });
+            return result;
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to create note';
             throw err;
         }
     };
 
-    // Update a note
-    const updateNote = async (id: string, data: Partial<Note>) => {
+    const updateNote = async (id: string, data: Partial<Note>): Promise<Note> => {
         try {
-            const response = await fetch(`/api/notes/${id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to update note');
-            }
-
-            // Note will be updated automatically via real-time event
-            return await response.json();
+            const result = await apiService.patch<Note>(`/api/notes/${id}`, data);
+            return result;
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to update note';
             throw err;
         }
     };
 
-    // Delete a note
-    const deleteNote = async (id: string) => {
+    const deleteNote = async (id: string): Promise<void> => {
         try {
-            const response = await fetch(`/api/notes/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to delete note');
-            }
-
-            // Note will be removed automatically via real-time event
-            return await response.json();
+            await apiService.delete(`/api/notes/${id}`);
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to delete note';
             throw err;
         }
     };
 
-    // Toggle note status
-    const toggleNote = async (id: string) => {
+    const toggleNote = async (id: string): Promise<Note> => {
         try {
-            const response = await fetch(`/api/notes/${id}/toggle`, {
-                method: 'PATCH',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to toggle note');
-            }
-
-            // Note will be updated automatically via real-time event
-            return await response.json();
+            const result = await apiService.patch<Note>(`/api/notes/${id}/toggle`);
+            return result;
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to toggle note';
             throw err;
         }
     };
 
-    // Cleanup
-    const cleanup = () => {
-        if (window.Echo) {
-            window.Echo.leave('notes');
+    // Cleanup function
+    const cleanup = (): void => {
+        if (notesChannel) {
+            echoService.getEcho()?.leaveChannel('notes');
+            notesChannel = null;
         }
     };
 
-    // Setup
-    onMounted(() => {
-        fetchNotes();
-        listenForNotes();
+    // Debug function
+    const debugConnection = (): void => {
+        echoService.debugConnection();
+        
+        if (notesChannel) {
+            console.log('- Notes channel exists:', !!notesChannel);
+            console.log('- Notes channel subscribed:', notesChannel.subscription?.subscribed);
+        } else {
+            console.log('- Notes channel not found');
+        }
+    };
+
+    // Lifecycle hooks
+    onMounted(async () => {
+        await fetchNotes();
+        setupEventListeners();
     });
 
-    onUnmounted(() => {
-        cleanup();
-    });
+    onUnmounted(cleanup);
 
     return {
-        notes,
-        isLoading,
-        error,
+        // State
+        notes: readonly(notes),
+        isLoading: readonly(isLoading),
+        error: readonly(error),
+        
+        // Actions
         fetchNotes,
         createNote,
         updateNote,
         deleteNote,
         toggleNote,
+        
+        // Debug
+        debugConnection,
     };
 }
