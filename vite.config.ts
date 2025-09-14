@@ -5,7 +5,7 @@ import laravel from 'laravel-vite-plugin';
 import { defineConfig } from 'vite';
 
 const port = 5173;
-const origin = process.env.DDEV_PRIMARY_URL || `http://localhost:${port}`;
+const origin = process.env.DDEV_PRIMARY_URL || `http://localhost`;
 
 export default defineConfig({
     // Adjust Vites dev server for DDEV: https://vitejs.dev/config/server-options.html
@@ -16,7 +16,11 @@ export default defineConfig({
         host: '0.0.0.0',
         port: port,
         origin: `${origin}:${port}`,
-        strictPort: true
+        strictPort: true,
+        hmr: {
+            host: 'lame.ddev.site',
+            port: port
+        }
     },
     plugins: [
         laravel({
