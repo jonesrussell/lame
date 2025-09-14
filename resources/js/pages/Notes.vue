@@ -3,8 +3,8 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { notes as notesRoute } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import { CheckCircle, Clock, FileText, Plus, Trash2, X } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { CheckCircle, Clock, FileText, Plus, Trash2, X, Bug } from 'lucide-vue-next';
+import { ref, onMounted } from 'vue';
 import { useNotesRealtime } from '@/composables/useNotesRealtime';
 
 interface Note {
@@ -15,21 +15,15 @@ interface Note {
     updated_at: string;
 }
 
-interface Props {
-    notes: Note[];
-}
-
-defineProps<Props>();
-
 // Use real-time composable
 const { 
-    notes, 
+    notes: realtimeNotes, 
     isLoading, 
     error, 
     createNote, 
-    updateNote, 
     deleteNote, 
-    toggleNote 
+    toggleNote,
+    debugConnection  // Get the debug function
 } = useNotesRealtime();
 
 // Form state
@@ -37,12 +31,24 @@ const showAddForm = ref(false);
 const newNoteContent = ref('');
 const isSubmitting = ref(false);
 
+// Debug state
+const showDebugPanel = ref(false);
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Notes',
         href: notesRoute().url,
     },
 ];
+
+// Debug connection on mount
+onMounted(() => {
+    // Wait a bit for Echo to initialize
+    setTimeout(() => {
+        console.log('🔍 Running debug check on component mount...');
+        debugConnection();
+    }, 3000);
+});
 
 const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -88,11 +94,18 @@ const handleAddNote = async () => {
     isSubmitting.value = true;
 
     try {
+        console.log('🚀 Creating note, watch for real-time event...');
         await createNote(newNoteContent.value.trim());
         
         // Reset form - note will be added automatically via real-time event
         newNoteContent.value = '';
         showAddForm.value = false;
+        
+        // Run debug after creating note
+        setTimeout(() => {
+            console.log('🔍 Debug check after note creation...');
+            debugConnection();
+        }, 1000);
     } catch (error) {
         console.error('Error creating note:', error);
         alert(error instanceof Error ? error.message : 'Failed to create note. Please try again.');
@@ -104,6 +117,29 @@ const handleAddNote = async () => {
 const cancelAddNote = () => {
     newNoteContent.value = '';
     showAddForm.value = false;
+};
+
+// Manual debug trigger
+const runDebugCheck = () => {
+    console.log('🔍 Manual debug check triggered...');
+    debugConnection();
+    showDebugPanel.value = true;
+    
+    // Hide debug panel after 5 seconds
+    setTimeout(() => {
+        showDebugPanel.value = false;
+    }, 5000);
+};
+
+// Test note creation for debugging
+const testNoteCreation = async () => {
+    try {
+        console.log('🧪 Creating test note...');
+        await createNote(`Test note created at ${new Date().toLocaleTimeString()}`);
+        console.log('🧪 Test note creation completed, check console for real-time events');
+    } catch (error) {
+        console.error('🧪 Test note creation failed:', error);
+    }
 };
 </script>
 
@@ -118,14 +154,61 @@ const cancelAddNote = () => {
                     <h1 class="text-2xl font-bold">Notes</h1>
                     <p class="text-muted-foreground">Manage your todo notes</p>
                 </div>
-                <button 
-                    v-if="!showAddForm"
-                    @click="showAddForm = true"
-                    class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                    <Plus class="h-4 w-4" />
-                    Add Note
-                </button>
+                <div class="flex items-center gap-2">
+                    <!-- Debug Button (remove in production) -->
+                    <button 
+                        @click="runDebugCheck"
+                        class="inline-flex items-center gap-2 rounded-md bg-orange-500 px-3 py-2 text-sm font-medium text-white hover:bg-orange-600"
+                        title="Debug WebSocket Connection"
+                    >
+                        <Bug class="h-4 w-4" />
+                        Debug
+                    </button>
+                    
+                    <!-- Test Button (remove in production) -->
+                    <button 
+                        @click="testNoteCreation"
+                        class="inline-flex items-center gap-2 rounded-md bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600"
+                        title="Create Test Note"
+                    >
+                        Test Note
+                    </button>
+                    
+                    <button 
+                        v-if="!showAddForm"
+                        @click="showAddForm = true"
+                        class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                    >
+                        <Plus class="h-4 w-4" />
+                        Add Note
+                    </button>
+                </div>
+            </div>
+
+            <!-- Debug Panel -->
+            <div v-if="showDebugPanel" class="rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                        🔍 Debug Information
+                    </h3>
+                    <button 
+                        @click="showDebugPanel = false"
+                        class="text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-200"
+                    >
+                        <X class="h-4 w-4" />
+                    </button>
+                </div>
+                <p class="text-sm text-orange-700 dark:text-orange-300">
+                    Check your browser console for detailed WebSocket connection information.
+                    <br>
+                    <strong>What to look for:</strong>
+                </p>
+                <ul class="mt-2 text-xs text-orange-600 dark:text-orange-400 space-y-1">
+                    <li>• "🔗 Connected" - WebSocket connected</li>
+                    <li>• "✅ Subscribed to notes channel" - Channel subscription successful</li>
+                    <li>• "📨 NoteCreated event received" - Events are being received</li>
+                    <li>• Environment variables are properly set</li>
+                </ul>
             </div>
 
             <!-- Add Note Form -->
@@ -191,7 +274,7 @@ const cancelAddNote = () => {
             </div>
 
             <!-- Empty State -->
-            <div v-else-if="notes.length === 0" class="flex flex-1 items-center justify-center">
+            <div v-else-if="realtimeNotes.length === 0" class="flex flex-1 items-center justify-center">
                 <div class="text-center">
                     <FileText class="mx-auto h-16 w-16 text-muted-foreground" />
                     <h3 class="mt-4 text-lg font-semibold">No notes yet</h3>
@@ -211,7 +294,7 @@ const cancelAddNote = () => {
             <!-- Notes List -->
             <div v-else class="space-y-3">
                 <div
-                    v-for="note in notes"
+                    v-for="note in realtimeNotes"
                     :key="note.id"
                     class="group rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
                 >
@@ -273,19 +356,19 @@ const cancelAddNote = () => {
             </div>
 
             <!-- Summary -->
-            <div v-if="notes.length > 0" class="rounded-lg border bg-muted/50 p-4">
+            <div v-if="realtimeNotes.length > 0" class="rounded-lg border bg-muted/50 p-4">
                 <div class="flex items-center justify-between text-sm">
                     <span class="text-muted-foreground">
-                        {{ notes.length }} total notes
+                        {{ realtimeNotes.length }} total notes
                     </span>
                     <div class="flex items-center gap-4">
                         <span class="flex items-center gap-1 text-green-600">
                             <CheckCircle class="h-3 w-3" />
-                            {{ notes.filter((n: Note) => n.done).length }} completed
+                            {{ realtimeNotes.filter((n: Note) => n.done).length }} completed
                         </span>
                         <span class="flex items-center gap-1 text-orange-600">
                             <Clock class="h-3 w-3" />
-                            {{ notes.filter((n: Note) => !n.done).length }} pending
+                            {{ realtimeNotes.filter((n: Note) => !n.done).length }} pending
                         </span>
                     </div>
                 </div>
@@ -293,4 +376,3 @@ const cancelAddNote = () => {
         </div>
     </AppLayout>
 </template>
-

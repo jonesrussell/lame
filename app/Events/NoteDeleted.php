@@ -22,6 +22,15 @@ class NoteDeleted implements ShouldBroadcast
     public function __construct(string $noteId)
     {
         $this->noteId = $noteId;
+        
+        // Debug logging
+        \Log::info('NoteDeleted event fired', [
+            'note_id' => $noteId,
+            'broadcast_channel' => 'notes',
+            'broadcast_event' => 'note.deleted'
+        ]);
+
+        $this->broadcastVia('reverb');
     }
 
     /**

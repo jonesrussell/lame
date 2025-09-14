@@ -1,39 +1,44 @@
 ---
-globs: *.php,app/**/*.php,routes/**/*.php,database/**/*.php,config/**/*.php
+globs: app/**/*.php,routes/**/*.php,database/**/*.php,config/**/*.php
+description: Laravel backend development patterns and best practices
 ---
 
-# Laravel Backend Development Rules
-
-## Code Style and Standards
-
-- Follow Laravel conventions and PSR-12 coding standards
-- Use Laravel Pint for PHP code formatting (configured in composer.json)
-- Use Pest for testing instead of PHPUnit
-- Follow Laravel's naming conventions:
-  - Controllers: `PascalCase` (e.g., `UserController`)
-  - Models: `PascalCase` (e.g., `User`)
-  - Routes: `kebab-case` (e.g., `/user-profile`)
-  - Database tables: `snake_case` (e.g., `user_profiles`)
+# Laravel Backend Development
 
 ## Architecture Patterns
 
-- Use Eloquent models for database interactions
-- Follow Laravel's MVC pattern strictly
-- Use Laravel Fortify for authentication (already configured)
-- Use Inertia.js for SPA-like experience without API endpoints
-- Use Laravel Wayfinder for route generation in frontend
+- **Controllers**: Located in [app/Http/Controllers](mdc:app/Http/Controllers) - Handle HTTP requests and responses
+- **Models**: Located in [app/Models](mdc:app/Models) - Eloquent models with relationships and business logic
+- **Services**: Use service classes for complex business logic, not controllers
+- **Events**: Located in [app/Events](mdc:app/Events) - Domain events for decoupled communication
+- **Listeners**: Located in [app/Listeners](mdc:app/Listeners) - Event handlers
+- **Broadcasting**: Located in [app/Broadcasting](mdc:app/Broadcasting) - Real-time communication
 
-## Key Files
+## Key Laravel Features
 
-- [app/Models/User.php](mdc:app/Models/User.php) - User model with authentication
-- [routes/web.php](mdc:routes/web.php) - Web routes
-- [config/database.php](mdc:config/database.php) - Database configuration
-- [bootstrap/app.php](mdc:bootstrap/app.php) - Application bootstrap
+- **Laravel Fortify**: Authentication scaffolding ([config/fortify.php](mdc:config/fortify.php))
+- **Laravel Pulse**: Application monitoring ([config/pulse.php](mdc:config/pulse.php))
+- **Laravel Reverb**: WebSocket server ([config/reverb.php](mdc:config/reverb.php))
+- **Laravel Wayfinder**: Enhanced routing ([config/wayfinder.php](mdc:config/wayfinder.php))
 
-## Development Guidelines
+## Database
 
-- Use Laravel's built-in validation rules
-- Use Eloquent relationships for data associations
-- Use Laravel's service container for dependency injection
-- Use Laravel's queue system for background jobs
-- Use Laravel Pail for log monitoring during development
+- **Migrations**: Located in [database/migrations](mdc:database/migrations)
+- **Seeders**: Located in [database/seeders](mdc:database/seeders)
+- **Factories**: Located in [database/factories](mdc:database/factories)
+- **Models**: Use Eloquent relationships, scopes, and accessors/mutators
+
+## Testing
+
+- **Pest PHP**: Located in [tests](mdc:tests) - Modern PHP testing framework
+- **Feature Tests**: Test HTTP endpoints and full user workflows
+- **Unit Tests**: Test individual classes and methods
+- **Database Tests**: Use RefreshDatabase trait for clean test state
+
+## Code Standards
+
+- Follow PSR-12 coding standards
+- Use Laravel Pint for code formatting
+- Use descriptive method and variable names
+- Implement proper error handling and validation
+- Use type hints and return types (PHP 8.2+)

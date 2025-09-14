@@ -1,43 +1,12 @@
-import { ref, onMounted, onUnmounted } from 'vue';
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
+import { ref, readonly, onMounted, onUnmounted } from 'vue';
+import { echoService } from '@/services/EchoService';
+import { apiService } from '@/services/ApiService';
+import type { Note, NoteEvent, NoteDeletedEvent, NoteStats } from '@/types/Note';
 
-// Make Pusher globally available
-window.Pusher = Pusher;
-
-// Extend window interface for Echo and Pusher
-declare global {
-    interface Window {
-        Echo: Echo<any>;
-        Pusher: typeof Pusher;
-    }
-}
-
-interface Note {
-    id: string;
-    content: string;
-    done: boolean;
-    created_at: string;
-    updated_at: string;
-}
-
-interface NoteEvent {
-    note: Note;
-    action: 'created' | 'updated';
-}
-
-interface NoteDeletedEvent {
-    noteId: string;
-    action: 'deleted';
-}
-
-interface NoteStats {
-    total: number;
-    completed: number;
-    pending: number;
-    recent: Note[];
-}
-
+/**
+ * Dashboard statistics composable with real-time updates
+ * Focuses solely on dashboard statistics and aggregated data
+ */
 export function useDashboardRealtime() {
     const noteStats = ref<NoteStats>({
         total: 0,
@@ -47,53 +16,11 @@ export function useDashboardRealtime() {
     });
     const isLoading = ref(false);
     const error = ref<string | null>(null);
+    
+    let dashboardChannel: any = null;
 
-    // Initialize Echo
-    const initializeEcho = () => {
-        if (!window.Echo) {
-            console.log('Initializing Echo with Reverb...', {
-                key: import.meta.env.VITE_REVERB_APP_KEY,
-                wsHost: import.meta.env.VITE_REVERB_HOST,
-                wsPort: import.meta.env.VITE_REVERB_PORT,
-                scheme: import.meta.env.VITE_REVERB_SCHEME,
-            });
-            
-            window.Echo = new Echo({
-                broadcaster: 'pusher',
-                key: import.meta.env.VITE_REVERB_APP_KEY,
-                cluster: 'mt1',
-                wsHost: import.meta.env.VITE_REVERB_HOST,
-                wsPort: import.meta.env.VITE_REVERB_PORT,
-                wssPort: import.meta.env.VITE_REVERB_PORT,
-                forceTLS: false,
-                enabledTransports: ['wss'],
-                disableStats: true,
-            });
-            
-            console.log('✅ Echo instance created successfully');
-            
-            // Add connection debugging
-            window.Echo.connector.pusher.connection.bind('connecting', () => {
-                console.log('🔄 Connecting to WebSocket...');
-            });
-            
-            window.Echo.connector.pusher.connection.bind('connected', () => {
-                console.log('🔗 WebSocket connected successfully');
-            });
-            
-            window.Echo.connector.pusher.connection.bind('disconnected', () => {
-                console.log('❌ WebSocket disconnected');
-            });
-            
-            window.Echo.connector.pusher.connection.bind('error', (error: any) => {
-                console.error('🚨 WebSocket error:', error);
-            });
-        }
-        return window.Echo;
-    };
-
-    // Update stats based on current notes
-    const updateStats = (notes: Note[]) => {
+    // Utility function to update stats based on notes array
+    const updateStats = (notes: Note[]): void => {
         noteStats.value.total = notes.length;
         noteStats.value.completed = notes.filter(note => note.done).length;
         noteStats.value.pending = notes.filter(note => !note.done).length;
@@ -102,89 +29,143 @@ export function useDashboardRealtime() {
             .slice(0, 5);
     };
 
-    // Listen for note events
-    const listenForNotes = () => {
-        const echo = initializeEcho();
+    // Event handlers for dashboard-specific logic
+    const handleNoteCreated = (event: NoteEvent): void => {
+        console.log('🎉 Note created (Dashboard):', event.note);
         
-        echo.channel('notes')
-            .listen('note.created', (event: NoteEvent) => {
-                console.log('🎉 Note created (Dashboard):', event.note);
-                // Add to recent notes if it's one of the 5 most recent
-                const allNotes = [...noteStats.value.recent, event.note];
-                updateStats(allNotes);
-            })
-            .listen('note.updated', (event: NoteEvent) => {
-                console.log('📝 Note updated (Dashboard):', event.note);
-                // Update the note in recent list if it exists
-                const recentIndex = noteStats.value.recent.findIndex(note => note.id === event.note.id);
-                if (recentIndex !== -1) {
-                    noteStats.value.recent[recentIndex] = event.note;
-                }
-                // Recalculate stats
-                updateStats(noteStats.value.recent);
-            })
-            .listen('note.deleted', (event: NoteDeletedEvent) => {
-                console.log('🗑️ Note deleted (Dashboard):', event.noteId);
-                // Remove from recent list if it exists
-                const recentIndex = noteStats.value.recent.findIndex(note => note.id === event.noteId);
-                if (recentIndex !== -1) {
-                    noteStats.value.recent.splice(recentIndex, 1);
-                }
-                // Recalculate stats
-                updateStats(noteStats.value.recent);
-            })
-            .error((error: any) => {
-                console.error('Echo error:', error);
-            });
+        if (!event.note || !event.note.id) {
+            console.warn('⚠️ Invalid note data received:', event);
+            return;
+        }
+
+        // Update stats optimistically without full refetch
+        noteStats.value.total += 1;
+        if (event.note.done) {
+            noteStats.value.completed += 1;
+        } else {
+            noteStats.value.pending += 1;
+        }
+
+        // Add to recent notes (maintain max 5)
+        noteStats.value.recent.unshift(event.note);
+        if (noteStats.value.recent.length > 5) {
+            noteStats.value.recent = noteStats.value.recent.slice(0, 5);
+        }
     };
 
-    // Fetch initial stats
-    const fetchStats = async () => {
+    const handleNoteUpdated = (event: NoteEvent): void => {
+        console.log('📝 Note updated (Dashboard):', event.note);
+        
+        if (!event.note || !event.note.id) {
+            console.warn('⚠️ Invalid note data received:', event);
+            return;
+        }
+
+        // Find and update in recent list if it exists
+        const recentIndex = noteStats.value.recent.findIndex(note => note.id === event.note.id);
+        if (recentIndex !== -1) {
+            const oldNote = noteStats.value.recent[recentIndex];
+            noteStats.value.recent[recentIndex] = event.note;
+            
+            // Update completion stats if status changed
+            if (oldNote.done !== event.note.done) {
+                if (event.note.done) {
+                    noteStats.value.completed += 1;
+                    noteStats.value.pending -= 1;
+                } else {
+                    noteStats.value.completed -= 1;
+                    noteStats.value.pending += 1;
+                }
+            }
+        }
+    };
+
+    const handleNoteDeleted = (event: NoteDeletedEvent): void => {
+        console.log('🗑️ Note deleted (Dashboard):', event.noteId);
+        
+        if (!event.noteId) {
+            console.warn('⚠️ Invalid note ID received:', event);
+            return;
+        }
+
+        // Find and remove from recent list if it exists
+        const recentIndex = noteStats.value.recent.findIndex(note => note.id === event.noteId);
+        if (recentIndex !== -1) {
+            const deletedNote = noteStats.value.recent[recentIndex];
+            noteStats.value.recent.splice(recentIndex, 1);
+            
+            // Update stats
+            noteStats.value.total -= 1;
+            if (deletedNote.done) {
+                noteStats.value.completed -= 1;
+            } else {
+                noteStats.value.pending -= 1;
+            }
+        } else {
+            // Note wasn't in recent list, but still update total count
+            noteStats.value.total = Math.max(0, noteStats.value.total - 1);
+        }
+    };
+
+    // Setup WebSocket event listeners for dashboard
+    const setupEventListeners = (): void => {
+        const echo = echoService.initialize();
+        dashboardChannel = echo.channel('notes');
+
+        // Listen for note events with dashboard-specific handlers
+        dashboardChannel
+            .listen('NoteCreated', handleNoteCreated)
+            .listen('.note.created', handleNoteCreated)
+            .listen('NoteUpdated', handleNoteUpdated) 
+            .listen('.note.updated', handleNoteUpdated)
+            .listen('NoteDeleted', handleNoteDeleted)
+            .listen('.note.deleted', handleNoteDeleted);
+
+        // Channel status handlers
+        dashboardChannel.subscribed(() => console.log('✅ Dashboard subscribed to notes channel'));
+        dashboardChannel.error((error: any) => console.error('🚨 Dashboard channel error:', error));
+    };
+
+    // Fetch initial statistics
+    const fetchStats = async (): Promise<void> => {
         isLoading.value = true;
         error.value = null;
         
         try {
-            const response = await fetch('/api/notes', {
-                headers: {
-                    'Accept': 'application/json',
-                },
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to fetch notes');
-            }
-            
-            const data = await response.json();
-            updateStats(data.data);
+            const data = await apiService.get<{ data: Note[] } | Note[]>('/api/notes');
+            const notes = Array.isArray(data) ? data : data.data || [];
+            updateStats(notes);
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'An error occurred';
-            console.error('Error fetching notes:', err);
+            error.value = err instanceof Error ? err.message : 'Failed to fetch note statistics';
+            console.error('Error fetching note stats:', err);
         } finally {
             isLoading.value = false;
         }
     };
 
-    // Cleanup
-    const cleanup = () => {
-        if (window.Echo) {
-            window.Echo.leave('notes');
+    // Cleanup function
+    const cleanup = (): void => {
+        if (dashboardChannel) {
+            echoService.getEcho()?.leaveChannel('notes');
+            dashboardChannel = null;
         }
     };
 
-    // Setup
-    onMounted(() => {
-        fetchStats();
-        listenForNotes();
+    // Lifecycle hooks
+    onMounted(async () => {
+        await fetchStats();
+        setupEventListeners();
     });
 
-    onUnmounted(() => {
-        cleanup();
-    });
+    onUnmounted(cleanup);
 
     return {
-        noteStats,
-        isLoading,
-        error,
+        // State
+        noteStats: readonly(noteStats),
+        isLoading: readonly(isLoading),
+        error: readonly(error),
+        
+        // Actions
         fetchStats,
     };
 }

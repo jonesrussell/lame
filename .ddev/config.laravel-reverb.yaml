@@ -1,11 +1,5 @@
-#ddev-generated
-web_extra_exposed_ports:
-  - name: reverb
-    container_port: 8080
-    http_port: 8081
-    https_port: 8080
-
+# Reverb start daemon
 web_extra_daemons:
   - name: reverb
-    command: "cd ${DDEV_COMPOSER_ROOT} && php artisan reverb:start"
+    command: bash -c 'php artisan reverb:start --host=0.0.0.0 --port=8080 --debug'
     directory: /var/www/html

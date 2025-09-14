@@ -1,5 +1,6 @@
 ---
 alwaysApply: true
+description: Laravel + Vue + TypeScript project structure and key files
 ---
 
 # Laravel + Vue + TypeScript Project Structure

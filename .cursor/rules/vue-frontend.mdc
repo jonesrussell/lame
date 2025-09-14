@@ -1,53 +1,72 @@
 ---
-globs: *.vue,*.ts,*.tsx,resources/js/**/*.vue,resources/js/**/*.ts,resources/js/**/*.tsx
+globs: resources/js/**/*.vue,resources/js/**/*.ts,resources/js/**/*.tsx
+description: Vue 3 + TypeScript frontend development patterns and best practices
 ---
 
-# Vue 3 + TypeScript Frontend Development Rules
+# Vue 3 + TypeScript Frontend Development
 
-## Component Architecture
+## Vue 3 Composition API
 
-- Use Vue 3 Composition API with `<script setup>` syntax
-- Use TypeScript for all components and composables
-- Follow Vue 3 best practices and conventions
-- Use Inertia.js for page components in `resources/js/pages/`
-- Use reusable components in `resources/js/components/`
+- **Setup Function**: Use `<script setup>` syntax for all components
+- **Reactivity**: Use `ref()` and `reactive()` for reactive state
+- **Computed**: Use `computed()` for derived state
+- **Watchers**: Use `watch()` and `watchEffect()` for side effects
+- **Lifecycle**: Use `onMounted()`, `onUnmounted()`, etc. instead of options API
 
-## Key Directories
+## Component Structure
 
-- [resources/js/pages/](mdc:resources/js/pages/) - Inertia.js page components
-- [resources/js/components/](mdc:resources/js/components/) - Reusable Vue components
-- [resources/js/layouts/](mdc:resources/js/layouts/) - Layout components
-- [resources/js/composables/](mdc:resources/js/composables/) - Vue 3 composables
-- [resources/js/types/](mdc:resources/js/types/) - TypeScript type definitions
+```vue
+<template>
+  <!-- Template with proper accessibility and semantic HTML -->
+</template>
 
-## Code Style and Standards
+<script setup lang="ts">
+// Imports
+// Props with TypeScript interfaces
+// Reactive state
+// Computed properties
+// Methods
+// Lifecycle hooks
+</script>
 
-- Use ESLint with Vue + TypeScript rules (configured in [eslint.config.js](mdc:eslint.config.js))
-- Use Prettier for code formatting with Tailwind CSS plugin
-- Use TypeScript strict mode (enabled in [tsconfig.json](mdc:tsconfig.json))
-- Use `@/*` path alias for imports (configured in tsconfig.json)
+<style scoped>
+/* Component-specific styles using Tailwind CSS */
+</style>
+```
 
-## Component Guidelines
+## TypeScript Integration
 
-- Use PascalCase for component names
-- Use kebab-case for component files
-- Use TypeScript interfaces for props and emits
-- Use Vue 3's `<script setup>` syntax
-- Use `defineProps()` and `defineEmits()` for component API
-- Use `ref()` and `reactive()` for reactive state
-- Use `computed()` for derived state
+- **Type Definitions**: Located in [resources/js/types](mdc:resources/js/types)
+- **Interfaces**: Define props, emits, and data structures with TypeScript
+- **Type Safety**: Use strict TypeScript configuration from [tsconfig.json](mdc:tsconfig.json)
+- **Vue Types**: Import Vue types for component props and emits
 
-## UI Framework
+## File Organization
 
-- Use Tailwind CSS for styling (v4 with Vite plugin)
-- Use Reka UI components from `resources/js/components/ui/`
-- Use Lucide Vue Next for icons
-- Use Class Variance Authority (CVA) for component variants
-- Use `clsx` and `tailwind-merge` for conditional classes
+- **Pages**: Located in [resources/js/pages](mdc:resources/js/pages) - Inertia.js page components
+- **Components**: Located in [resources/js/components](mdc:resources/js/components) - Reusable Vue components
+- **Layouts**: Located in [resources/js/layouts](mdc:resources/js/layouts) - Page layout components
+- **Composables**: Located in [resources/js/composables](mdc:resources/js/composables) - Reusable composition functions
+- **Services**: Located in [resources/js/services](mdc:resources/js/services) - API and business logic
+- **Actions**: Located in [resources/js/actions](mdc:resources/js/actions) - Inertia.js form actions
 
-## Development Tools
+## Styling
 
-- Hot reloading enabled via Vite
-- TypeScript compilation happens automatically
-- ESLint runs on save with auto-fix
-- Prettier formats code on save
+- **Tailwind CSS 4**: Use utility classes for styling
+- **Component Variants**: Use class-variance-authority (CVA) for component variants
+- **CSS Variables**: Use CSS custom properties for theming
+- **Responsive Design**: Use Tailwind's responsive prefixes (sm:, md:, lg:, xl:)
+
+## State Management
+
+- **Composables**: Create custom composables for shared state
+- **VueUse**: Use [@vueuse/core](mdc:resources/js/composables) utilities
+- **Local Storage**: Use VueUse's useLocalStorage for persistence
+- **Reactive State**: Use Pinia if complex state management is needed
+
+## Performance
+
+- **Lazy Loading**: Use dynamic imports for code splitting
+- **Virtual Scrolling**: For large lists
+- **Memoization**: Use `computed()` for expensive calculations
+- **Component Optimization**: Use `shallowRef()` for non-reactive objects
