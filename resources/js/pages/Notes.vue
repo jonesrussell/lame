@@ -2,9 +2,10 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { notes as notesRoute } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { CheckCircle, Clock, FileText, Plus, Trash2, X } from 'lucide-vue-next';
 import { ref } from 'vue';
+import { useNotesRealtime } from '@/composables/useNotesRealtime';
 
 interface Note {
     id: string;
@@ -18,7 +19,18 @@ interface Props {
     notes: Note[];
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
+
+// Use real-time composable
+const { 
+    notes, 
+    isLoading, 
+    error, 
+    createNote, 
+    updateNote, 
+    deleteNote, 
+    toggleNote 
+} = useNotesRealtime();
 
 // Form state
 const showAddForm = ref(false);
@@ -42,20 +54,10 @@ const formatDate = (dateString: string) => {
     });
 };
 
-const deleteNote = async (noteId: string) => {
+const handleDeleteNote = async (noteId: string) => {
     if (confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
         try {
-            await fetch(`/api/notes/${noteId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-            });
-            
-            // Refresh the page to show updated notes list
-            router.reload();
+            await deleteNote(noteId);
         } catch (error) {
             console.error('Error deleting note:', error);
             alert('Failed to delete note. Please try again.');
@@ -63,26 +65,16 @@ const deleteNote = async (noteId: string) => {
     }
 };
 
-const toggleNoteStatus = async (noteId: string) => {
+const handleToggleNote = async (noteId: string) => {
     try {
-        await fetch(`/api/notes/${noteId}/toggle`, {
-            method: 'PATCH',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-        });
-        
-        // Refresh the page to show updated notes list
-        router.reload();
+        await toggleNote(noteId);
     } catch (error) {
         console.error('Error toggling note status:', error);
         alert('Failed to update note status. Please try again.');
     }
 };
 
-const addNote = async () => {
+const handleAddNote = async () => {
     if (!newNoteContent.value.trim()) {
         alert('Please enter note content.');
         return;
@@ -96,27 +88,11 @@ const addNote = async () => {
     isSubmitting.value = true;
 
     try {
-        const response = await fetch('/api/notes', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-            body: JSON.stringify({
-                content: newNoteContent.value.trim(),
-            }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to create note');
-        }
-
-        // Reset form and refresh page
+        await createNote(newNoteContent.value.trim());
+        
+        // Reset form - note will be added automatically via real-time event
         newNoteContent.value = '';
         showAddForm.value = false;
-        router.reload();
     } catch (error) {
         console.error('Error creating note:', error);
         alert(error instanceof Error ? error.message : 'Failed to create note. Please try again.');
@@ -164,7 +140,7 @@ const cancelAddNote = () => {
                     </button>
                 </div>
                 
-                <form @submit.prevent="addNote" class="space-y-4">
+                <form @submit.prevent="handleAddNote" class="space-y-4">
                     <div>
                         <label for="note-content" class="block text-sm font-medium text-foreground mb-2">
                             Note Content
@@ -204,8 +180,18 @@ const cancelAddNote = () => {
                 </form>
             </div>
 
-            <!-- Notes List -->
-            <div v-if="props.notes.length === 0" class="flex flex-1 items-center justify-center">
+            <!-- Loading State -->
+            <div v-if="isLoading" class="flex items-center justify-center py-8">
+                <div class="text-muted-foreground">Loading notes...</div>
+            </div>
+
+            <!-- Error State -->
+            <div v-else-if="error" class="rounded-lg border border-destructive bg-destructive/10 p-4">
+                <div class="text-destructive">Error: {{ error }}</div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="notes.length === 0" class="flex flex-1 items-center justify-center">
                 <div class="text-center">
                     <FileText class="mx-auto h-16 w-16 text-muted-foreground" />
                     <h3 class="mt-4 text-lg font-semibold">No notes yet</h3>
@@ -222,9 +208,10 @@ const cancelAddNote = () => {
                 </div>
             </div>
 
+            <!-- Notes List -->
             <div v-else class="space-y-3">
                 <div
-                    v-for="note in props.notes"
+                    v-for="note in notes"
                     :key="note.id"
                     class="group rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
                 >
@@ -264,7 +251,7 @@ const cancelAddNote = () => {
                         <!-- Actions -->
                         <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                             <button
-                                @click="toggleNoteStatus(note.id)"
+                                @click="handleToggleNote(note.id)"
                                 :class="[
                                     'rounded-md px-2 py-1 text-xs font-medium transition-colors',
                                     note.done 
@@ -275,7 +262,7 @@ const cancelAddNote = () => {
                                 {{ note.done ? 'Mark Undone' : 'Mark Done' }}
                             </button>
                             <button 
-                                @click="deleteNote(note.id)"
+                                @click="handleDeleteNote(note.id)"
                                 class="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900"
                             >
                                 <Trash2 class="h-3 w-3" />
@@ -286,19 +273,19 @@ const cancelAddNote = () => {
             </div>
 
             <!-- Summary -->
-            <div v-if="props.notes.length > 0" class="rounded-lg border bg-muted/50 p-4">
+            <div v-if="notes.length > 0" class="rounded-lg border bg-muted/50 p-4">
                 <div class="flex items-center justify-between text-sm">
                     <span class="text-muted-foreground">
-                        {{ props.notes.length }} total notes
+                        {{ notes.length }} total notes
                     </span>
                     <div class="flex items-center gap-4">
                         <span class="flex items-center gap-1 text-green-600">
                             <CheckCircle class="h-3 w-3" />
-                            {{ props.notes.filter((n: Note) => n.done).length }} completed
+                            {{ notes.filter((n: Note) => n.done).length }} completed
                         </span>
                         <span class="flex items-center gap-1 text-orange-600">
                             <Clock class="h-3 w-3" />
-                            {{ props.notes.filter((n: Note) => !n.done).length }} pending
+                            {{ notes.filter((n: Note) => !n.done).length }} pending
                         </span>
                     </div>
                 </div>
