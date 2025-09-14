@@ -2,12 +2,6 @@
 
 namespace App\Providers;
 
-use App\Events\NoteCreated;
-use App\Events\NoteDeleted;
-use App\Events\NoteUpdated;
-use App\Listeners\BroadcastNoteCreated;
-use App\Listeners\BroadcastNoteDeleted;
-use App\Listeners\BroadcastNoteUpdated;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -18,15 +12,7 @@ class EventServiceProvider extends ServiceProvider
      * @var array<class-string, array<int, class-string>>
      */
     protected $listen = [
-        NoteCreated::class => [
-            BroadcastNoteCreated::class,
-        ],
-        NoteUpdated::class => [
-            BroadcastNoteUpdated::class,
-        ],
-        NoteDeleted::class => [
-            BroadcastNoteDeleted::class,
-        ],
+        //
     ];
 
     /**
